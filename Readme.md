@@ -29,7 +29,8 @@ npm install future-proxy
         const t = new proxy.Future(); // Create a reference to some future object.
         const x = proxy.trap(t);
 
-        // Do whatever you would do as if the object 't' actually exists
+        // Do whatever you would do through x, as if the object 't' actually exists
+        x.something(); // Where something is a method on future 't' object.
 
         // Later after sometime...
         t.resolve(futureObject); // Now, all the calls (get, set, etc.) to 'futureObject' will be made.
@@ -52,9 +53,9 @@ calling target.resolve(value);
 ##### Parameters
 
 *   `target` **Future** : o : Must be an instance of Future.
-*   `interceptors` **any?** : An interceptor object (Optional) See [below](interceptors).
+*   `interceptors` **any?** : An interceptor object (Optional) See [below](#interceptors).
 
-##### Returns `
+##### Returns
 
 `Proxy` : This records all the calls and calls them later when the target is resolved!
 
