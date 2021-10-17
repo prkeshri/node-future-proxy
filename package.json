@@ -1,0 +1,27 @@
+{
+  "name": "future-proxy",
+  "version": "1.0.0",
+  "description": "A proxy which wraps a potential \"future\" object, which does not exist Yet!",
+  "main": "proxy.js",
+  "scripts": {
+    "test": "node ./test/proxy.test"
+  },
+  "keywords": [
+    "proxy",
+    "future",
+    "wrap"
+  ],
+  "author": "Praveen Ranjan Keshri",
+  "license": "ISC",
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/prkeshri/node-future-proxy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/prkeshri/node-future-proxy/issues"
+  },
+  "homepage": "https://github.com/prkeshri/node-future-proxy#readme"
+}
