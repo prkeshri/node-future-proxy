@@ -24,7 +24,7 @@ npm install future-proxy
 
 <b>Minimal Setup:</b>
 
-        const proxy = require('./proxy');
+        const proxy = require('future-proxy');
 
         const t = new proxy.Future(); // Create a reference to some future object.
         const x = proxy.trap(t);
