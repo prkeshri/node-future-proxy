@@ -1,7 +1,24 @@
-const { defaultValueMap, overrideDefaultValueMap } = require("./defaultValueMap");
-const { Internal, Both, IfNotExist, noObj, noFunc } = require("./Internal");
-const { VALUE, FUNCTION, __call, TRAP, __resolve, IF_NOT_EXIST, RESOLVE, BOTH } = require('./Symbols');
-const { Future } = require('./Future');
+const {
+    defaultValueMap,
+    overrideDefaultValueMap,
+} = require("./defaultValueMap");
+const { Internal, noObj, noFunc, IfNotExist, Both } = require("./Internal");
+const {
+    VALUE,
+    ID,
+    FUNCTION,
+    __call,
+    IF_NOT_EXIST,
+    BOTH,
+    TRAP,
+    RESOLVE,
+} = require("./Symbols");
+const { Future } = require("./Future");
+const {
+    __getInterceptors,
+    get,
+    __getPostInterceptor,
+} = require("./interceptor-helper");
 /**
  * @description This function outputs the Proxy.
  *              The actual methods are called when the target is set to proper value by 
@@ -24,169 +41,175 @@ const { Future } = require('./Future');
         2. If any value other than the below, are returned, same call will be made when the target is resolved.
             2.a. <... Documentation in progress ... >
  */
-function trap(target, interceptors) {
+function trap(target = noObj, interceptors = noFunc) {
     interceptors = __getInterceptors(interceptors);
     const _calls = [];
-    const defaultFunction = function(key) {
-        return function(...args) {
-            _calls.push([__call, args, key]);
-        }
-    };
 
-    const p = new Proxy(target, new Proxy(noObj, {
-        get: function(no, trapKey){
-            return function(...args) {
-                let targetO;
-                let v1 = interceptors( trapKey , args );
-                if(v1 && !(v1 instanceof Internal)) {
-                    return v1; // Send the value and no real call!
-                } else if(targetO = target.o) {
-                    args[0] = targetO; //Real call
-                    let v2 = Reflect[trapKey](...args);
-                    if(v1 instanceof Both) { // Send intercepted value, chop off real value!
-                        if(v1.callback) {
-                            setTimeout(v1.callback, 0, v2);
-                        }
-                        return v1[VALUE];
-                    }
-                    if(trapKey === 'get' && typeof v2 === 'function') {
-                        v2 = v2.bind(targetO)
-                    }
-                    return v2;
+    function proxychain(target, interceptors, parentProxy, meKey = "") {
+        const __calls = [];
+        let value, parent;
+        const me_ID = {
+            // #hi traps get, set
+            resolve: function (returnValues) {
+                let { trapKey, args, returnProxy, [__call]: _call } = __calls.shift();
+
+                if (_call) {
+                    return _call(returnProxy, returnValues);
                 }
-                const key = args[1];
-                if(!v1?.skip) {
-                    _calls.push([trapKey, args]);
+
+                args[0] = value;
+                if (args[1] === VALUE) {
+                    args[1] = parent;
                 }
-                if(v1) { // v1 instanceof Internal
-                    const v1Value = v1[VALUE];
-                    if(v1.resolve) {
-                        _calls.push([__resolve, [v1.resolve]]);
-                        return v1Value;
+                let v = Reflect[trapKey].apply(Reflect, args);
+                returnProxy[ID].value(v, value);
+
+                returnValues[meKey + (trapKey === "apply" ? "." : "")] = v;
+            },
+            value: function (_value, _parent) {
+                if (arguments.length) {
+                    value = _value;
+                    if (!parent) {
+                        parent = _parent;
                     }
-                    if(typeof v1Value === 'function') {
-                        return function(...args) {
-                            const v = v1Value(...args);
-                            _calls.push([__call, args, key]);
-                            return v;
+                }
+                return value;
+            },
+            parent: () => parent,
+        };
+
+        const currentProxy = new Proxy(
+            target,
+            new Proxy(
+                {},
+                {
+                    get: function (_no, trapKey) {
+                        return function (...args) {
+                            if (trapKey === "get" && args[1] === ID) {
+                                return me_ID;
+                            }
+
+                            let iv = interceptors(trapKey, args);
+                            iv = postInterceptor(trapKey, args, iv);
+                            if (iv && !(iv instanceof Internal)) {
+                                return iv;
+                            }
+
+                            const targetO = target.o;
+                            if (targetO) {
+                                args[0] = targetO;
+                                return Reflect[trapKey].apply(Reflect, args);
+                            }
+
+                            let v1 = defaultValueMap[trapKey];
+                            if (v1 !== FUNCTION) {
+                                return v1;
+                            }
+
+                            let childKey =
+                                (trapKey === "get" &&
+                                    (meKey !== "" ? meKey + "." : "") + args[1]) ||
+                                "";
+                            let returnProxy = proxychain(
+                                noFunc,
+                                noFunc,
+                                currentProxy,
+                                childKey
+                            );
+                            if (trapKey === "get" || trapKey === "set") {
+                                args.pop(); // #hi traps
+                            } else if (
+                                trapKey === "apply" &&
+                                args[1] &&
+                                args[1] === parentProxy
+                            ) {
+                                args[1] = VALUE;
+                            }
+
+                            let callInfo = { trapKey, args, returnProxy };
+                            addCallInfo(callInfo);
+
+                            if (iv) {
+                                return iv[VALUE];
+                            }
+                            return returnProxy;
                         };
-                    } else {
-                        return v1[VALUE];
-                    }
+                    },
                 }
-                v1 = defaultValueMap[trapKey];
-                if(v1 === FUNCTION) {
-                    v1 = defaultFunction(key);
-                }
-                return v1;
-            }
-        }
-    }));
+            )
+        );
 
-    target.resolve = function(value) {
-        if(target.o) {
+        const postInterceptor = parentProxy
+            ? noFunc
+            : __getPostInterceptor(currentProxy, target, addCallInfo);
+
+        return currentProxy;
+
+        function addCallInfo(callInfo) {
+            __calls.push(callInfo);
+            _calls.push(me_ID);
+        }
+    }
+
+    const p = proxychain(target, interceptors);
+
+    target.resolve = function (value) {
+        if (target.o) {
             throw new Error("Cannot set twice!");
         }
         target.o = value;
-        fulfill(target.o);
+        fulfill(value);
         return target;
-    }
+    };
 
-    target.addCall = function(callArgs = [], key = undefined) {
-        _calls.push([__call, callArgs, key]);
-        return target;
-    }
-
-    function fulfill(targetO) {
-        let v;
-        let values = {};
-        if(target.emit) {
-            target.emit('pre-resolved', targetO);
-        }
-        _calls.forEach(([trapKey, args, key]) => {
-            if(trapKey === __resolve) {
-                v = args.shift();
-                trapKey = __call;
-            }
-            if(trapKey === __call) {
-                if(key) {
+    target.addCall = function (callArgs = [], key = undefined) {
+        _calls.push({
+            resolve: function (values) {
+                if (key) {
                     v = values[key];
                 }
-                let value = v.apply(targetO, args);
+                let value = v.apply(targetO, callArgs);
                 values[`${v.name}()`] = value;
-                return;
-            }
-            args[0] = targetO;
-            v = Reflect[trapKey](...args);
-            if(trapKey === 'get') {
-                values[args[1]] = v;
-            } else if (trapKey === 'apply') {
-                values['.'] = v;
-            }
+            },
         });
+        return target;
+    };
 
-        if(target.emit) {
-            target.emit('resolved', values, targetO);
+    function fulfill(targetO) {
+        if (target.emit) {
+            target.emit("pre-resolved", targetO);
+        }
+
+        p[ID].value(targetO);
+
+        const values = {};
+        if (_calls[0]) {
+            _calls.forEach((_call) => _call.resolve(values));
+        }
+
+        if (target.emit) {
+            target.emit("resolved", values, targetO);
         }
     }
 
     return p;
 }
 
-function __getInterceptors(interceptors) {
-    if(!interceptors) {
-        return noFunc;
-    }
-    if(typeof interceptors === 'function') {
-        return interceptors;
-    }
-    return function( trapKey, args ) {
-        if(!(trapKey in interceptors)) {
-            return;
-        }
-        const interceptor = interceptors[trapKey];
-        if(typeof interceptor === 'function' ) {
-            return interceptor(...args);
-        }
-        const key = args[1];
-        let value = interceptor[key];
-        if(value) {
-            let valueTrap;
-            if(valueTrap = value[TRAP]) {
-                args = args.slice(2);
-                value = valueTrap();
-            } else if(valueTrap = value[IF_NOT_EXIST]) {
-                const resolve = value[RESOLVE];
-                value = new IfNotExist(valueTrap, resolve, resolve);
-            } else if(valueTrap = value[BOTH]) {
-                const resolve = value[RESOLVE];
-                value = new Both(valueTrap, resolve, resolve);
-            }
-        }
-        return value;
-    }
-}
-
-function get(interceptor) {
-    return { get: interceptor };
-}
-
-
 module.exports = exports = {
-    trap, 
+    trap,
     Proxy: trap,
 
-    IfNotExist, 
-    Both, 
+    IfNotExist,
+    Both,
     Future,
 
-    get, 
-    TRAP, 
-    IF_NOT_EXIST, 
-    RESOLVE, 
+    get,
+    TRAP,
+    IF_NOT_EXIST,
+    RESOLVE,
     BOTH,
 
     Function,
 
-    overrideDefaultValueMap
+    overrideDefaultValueMap,
 };

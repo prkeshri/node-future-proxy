@@ -26,7 +26,7 @@ class Both extends Internal {
 class Func extends Function {
 }
 
-const noFunc = function() {};
+const noFunc = function () { };
 
 const noObj = {};
 

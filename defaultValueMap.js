@@ -1,7 +1,7 @@
 const { FUNCTION } = require('./Symbols');
 
 const defaultValueMap = {
-    "apply": undefined,
+    "apply": FUNCTION,
     "construct": {},
     "defineProperty": true,
     "deleteProperty": true,

@@ -83,7 +83,7 @@ function _getCallerFile() {
 nextI();
 
 process.on("uncaughtException", (args) => {
-    console.log(...args);
+    console.log(args);
 })
 
 const gS = global.setTimeout;
@@ -91,3 +91,7 @@ global.setTimeout = function(...args) {
     args[1] = 0;
     gS(...args);
 }
+
+process.on('uncaughtException', (err) => {
+    console.log({err})
+});
