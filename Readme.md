@@ -8,6 +8,19 @@
 
 > A proxy which wraps a potential &#34;future&#34; object, that does not exist Yet!
 
+<b>Quick Practical Example:</b>
+```js
+  // Let's say we have to require an es6 module such as 
+  // node-fetch (Latest version)
+
+  const proxy = require('future-proxy');
+  const fetch = proxy.Import('node-fetch');
+  // Now, fetch can be used immediately. Once it is resolved, it will work automatically // (See documentation below!)
+
+  // The above is a shorthand for:
+  const fetch = proxy.trap(new proxy.Future(proxy.Function, import('node-fetch').then(_ => _.default)))  // Documentation below!
+```
+
 ### 🏠 [Homepage](https://github.com/prkeshri/node-future-proxy)
 
 ## Install
@@ -23,44 +36,44 @@ npm install future-proxy
 <br/>
 
 <b>Minimal Setup:</b>
+```js
+  const proxy = require('future-proxy');
 
-        const proxy = require('future-proxy');
+  const t = new proxy.Future(); // Create a reference to some future object.
+  const x = proxy.trap(t);
 
-        const t = new proxy.Future(); // Create a reference to some future object.
-        const x = proxy.trap(t);
+  // Do whatever you would do through x, as if the object 't' actually exists
+  x.something(); // Where something is a method on future 't' object.
 
-        // Do whatever you would do through x, as if the object 't' actually exists
-        x.something(); // Where something is a method on future 't' object.
-
-        // Later after sometime...
-        t.resolve(futureObject); // Now, all the calls (get, set, etc.) to 'futureObject' will be made.
-
+  // Later after sometime...
+  t.resolve(futureObject); // Now, all the calls (get, set, etc.) to 'futureObject' will be made.
+```
 If you wish to trap a function, instead of new proxy.Future, call:
-    
-        new proxy.Future(proxy.Function);
-
+```js
+  new proxy.Future(proxy.Function);
+```
 The documentation is a progress to include the other (advanced) features. Meanwhile, files inside test/ can be referenced.
 
 
 ## API
 
-### trap
+<a name="trap"></a>
 
+## trap(target, [interceptors]) ⇒ <code>Proxy</code>
 This function outputs the Proxy.
-The actual methods are called when the target is set to proper value by
-calling target.resolve(value);
+             The actual methods are called when the target is set to proper value by 
+             calling target.resolve(value);
 
-##### Parameters
+**Kind**: function  
+**Returns**: <code>Proxy</code> - This records all the calls and calls them later when the target is resolved!
 
-*   `target` **Future** : o : Must be an instance of Future.
-*   `interceptors` **any?** : An interceptor object (Optional) See [below](#interceptors).
-
-##### Returns
-
-`Proxy` : This records all the calls and calls them later when the target is resolved!
+| Param | Type | Description |
+| --- | --- | --- |
+| target | <code>Future</code> | o : Must be an instance of Future. |
+| [interceptors] | <code>\*</code> | : An interceptor object (Optional). See below: |
 
 [interceptors]:  #interceptors
-#### An interceptor can be either of the following:
+#### Interceptors param can be either of the following:
 1. ` function(trapKey, arguments)` Here, trapKey is any of the proxy handler key i.e. get, set, etc.
 arguments is the arguments to the handler trap.
 2. `{
@@ -70,10 +83,39 @@ arguments is the arguments to the handler trap.
 
 #####  Interceptor return values and actions:
 1.  If no value returned, same call will be made when the target is resolved.
-2.  If any value other than the below, are returned, same call will be made when the target is resolved.2.a. 
+2.  If any value other than the below, are returned, same call will be made when the target is resolved. <br/>
+  <... More and advanced usage documentation in progress ... >
 
-<... More and advanced usage documentation in progress ... >
+<hr/>
+<a name="Future"></a>
 
+## Future
+**Kind**: class  
+<a name="new_Future_new"></a>
+
+### new Future([future], [promise])
+Holds a potential future object which is unavailable yet!
+
+**Returns**: Future Object  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| [future] | <code>proxy.Function</code> | Optional: Can be proxy.Function if the 'future' object is expected to be a function |
+| [promise] | <code>Promise</code> | Optional: If present, the future will be auto resolved once the promise is resolved |
+
+<a name="Future+await"></a>
+
+### future.await(promise) ⇒
+Awaits for the promise and resolves once the promise resolves.
+
+**Kind**: instance method of [<code>Future</code>](#Future)  
+**Returns**: this  
+
+| Param | Type |
+| --- | --- |
+| promise | <code>Promise</code> | 
+
+<hr/>
 
 ## Run tests
 

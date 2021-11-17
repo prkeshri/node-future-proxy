@@ -1,6 +1,6 @@
 {
   "name": "future-proxy",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A proxy which wraps a potential \"future\" object, which does not exist Yet!",
   "main": "proxy.js",
   "scripts": {
@@ -23,5 +23,8 @@
   "bugs": {
     "url": "https://github.com/prkeshri/node-future-proxy/issues"
   },
-  "homepage": "https://github.com/prkeshri/node-future-proxy#readme"
+  "homepage": "https://github.com/prkeshri/node-future-proxy#readme",
+  "dependencies": {
+    "is-promise": "^4.0.0"
+  }
 }

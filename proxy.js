@@ -23,12 +23,11 @@ const {
  * @description This function outputs the Proxy.
  *              The actual methods are called when the target is set to proper value by 
  *              calling target.resolve(value);
- * @param {Future} target : o : Must be an instance of Future. 
+ * @param {Future} target o : Must be an instance of Future. 
  * @param {*} [interceptors] : An interceptor object (Optional)
- * @returns {Proxy}
+ * @returns {Proxy} This records all the calls and calls them later when the target is resolved!
  * 
- * 
-    An interceptor can be either of the following:
+    Interceptors param can be either of the following:
         1. function(trapKey, arguments)
             Here, trapKey is any of the proxy handler key i.e. get, set, etc.
             arguments is the arguments to the handler trap.
@@ -195,6 +194,7 @@ function trap(target = noObj, interceptors = noFunc) {
     return p;
 }
 
+const utils = require('./utils');
 module.exports = exports = {
     trap,
     Proxy: trap,
@@ -212,4 +212,6 @@ module.exports = exports = {
     Function,
 
     overrideDefaultValueMap,
+
+    Import: utils.Import
 };
